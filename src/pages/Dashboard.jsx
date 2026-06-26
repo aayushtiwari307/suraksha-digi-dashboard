@@ -41,7 +41,10 @@ function Dashboard() {
           <h1 style={styles.logo}>Suraksha<span style={{ color: '#D4820A' }}>Digi</span></h1>
           <p style={styles.welcome}>Welcome, <strong>{family?.name}</strong> ({family?.phone})</p>
         </div>
-        <button onClick={handleLogout} style={styles.logoutBtn}>Logout</button>
+        <div style={{ display: 'flex', gap: '10px' }}>
+          <button onClick={() => navigate('/add-elder')} style={styles.addBtn}>+ Add Elder</button>
+          <button onClick={handleLogout} style={styles.logoutBtn}>Logout</button>
+        </div>
       </div>
 
       <div style={styles.searchCard}>
@@ -124,6 +127,16 @@ const styles = {
     cursor: 'pointer',
     fontSize: '13px',
     fontWeight: 500
+  },
+  addBtn: {
+    padding: '9px 18px',
+    background: '#D4820A',
+    color: '#fff',
+    border: 'none',
+    borderRadius: '8px',
+    cursor: 'pointer',
+    fontSize: '13px',
+    fontWeight: 600
   },
   searchCard: {
     background: '#fff',

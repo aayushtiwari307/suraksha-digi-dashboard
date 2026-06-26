@@ -2,6 +2,7 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import Login from './pages/Login';
 import Dashboard from './pages/Dashboard';
+import AddElder from './pages/AddElder';
 
 function ProtectedRoute({ children }) {
   const { family } = useAuth();
@@ -17,6 +18,14 @@ function AppRoutes() {
         element={
           <ProtectedRoute>
             <Dashboard />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/add-elder"
+        element={
+          <ProtectedRoute>
+            <AddElder />
           </ProtectedRoute>
         }
       />
