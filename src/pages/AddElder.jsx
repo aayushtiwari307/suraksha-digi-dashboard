@@ -1,7 +1,6 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import API from '../api/axios';
-import { useAuth } from '../context/AuthContext';
 
 function AddElder() {
   const [name, setName] = useState('');
@@ -14,7 +13,6 @@ function AddElder() {
   const [elderId, setElderId] = useState('');
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
-  const { family } = useAuth();
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -34,7 +32,6 @@ function AddElder() {
 
   return (
     <div style={s.page}>
-      {/* NAVBAR */}
       <div style={s.nav}>
         <div style={s.navLeft}>
           <span style={s.navLogo}>🛡️</span>
