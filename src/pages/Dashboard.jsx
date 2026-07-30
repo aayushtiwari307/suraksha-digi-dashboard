@@ -3,6 +3,25 @@ import { useNavigate } from 'react-router-dom';
 import API from '../api/axios';
 import { useAuth } from '../context/AuthContext';
 
+const getGreeting = () => {
+  const h = new Date().getHours();
+  if (h < 12) return 'Good morning';
+  if (h < 17) return 'Good afternoon';
+  return 'Good evening';
+};
+
+const getDate = () => new Date().toLocaleDateString('en-IN', {
+  weekday: 'long', day: 'numeric', month: 'long', year: 'numeric'
+});
+
+const ALERT_LABELS = {
+  fraud: 'Fraud attempt',
+  confusion: 'Confusion detected',
+  inactivity: 'Inactivity',
+  unusual_transaction: 'Unusual transaction',
+  suspicious_link: 'Suspicious link'
+};
+
 function Dashboard() {
   const { family, logout } = useAuth();
   const navigate = useNavigate();
@@ -10,154 +29,208 @@ function Dashboard() {
   const [alerts, setAlerts] = useState([]);
   const [error, setError] = useState('');
   const [fetched, setFetched] = useState(false);
+  const [loading, setLoading] = useState(false);
 
   const handleLogout = () => { logout(); navigate('/'); };
 
   const fetchAlerts = async () => {
-    setError(''); setFetched(false);
+    if (!elderId.trim()) return;
+    setError(''); setFetched(false); setLoading(true);
     try {
       const res = await API.get(`/alerts/elder/${elderId}`);
       setAlerts(res.data.alerts);
       setFetched(true);
     } catch (err) {
       setError(err.response?.data?.message || 'Failed to fetch alerts');
+    } finally {
+      setLoading(false);
     }
   };
 
   const resolveAlert = async (alertId) => {
     try {
       await API.put(`/alerts/resolve/${alertId}`);
-      fetchAlerts();
-    } catch (err) {
-      setError(err.response?.data?.message || 'Failed to resolve alert');
+      setAlerts(prev => prev.map(a => a._id === alertId ? { ...a, isResolved: true } : a));
+    } catch {
+      setError('Failed to resolve alert');
     }
   };
 
+  const unresolved = alerts.filter(a => !a.isResolved).length;
+  const resolved = alerts.filter(a => a.isResolved).length;
+
   return (
     <div style={s.page}>
-      <div style={s.nav}>
+
+      {/* NAV */}
+      <nav style={s.nav}>
         <div style={s.navLeft}>
-          <span style={s.navLogo}>🛡️</span>
-          <span style={s.navBrand}>Suraksha<span style={{ color: '#f5a623' }}>Digi</span></span>
+          <i style={s.navIcon}>🛡️</i>
+          <span style={s.navBrand}>Suraksha<span style={{ color: '#d97706' }}>Digi</span></span>
         </div>
         <div style={s.navRight}>
           <div style={s.userPill}>
             <div style={s.avatar}>{family?.name?.[0]?.toUpperCase()}</div>
             <span style={s.userName}>{family?.name}</span>
           </div>
-          <button onClick={() => navigate('/add-elder')} style={s.addBtn}>+ Add Elder</button>
+          <button onClick={() => navigate('/add-elder')} style={s.addBtn}>
+            + Add elder
+          </button>
           <button onClick={handleLogout} style={s.logoutBtn}>Logout</button>
         </div>
-      </div>
+      </nav>
 
-      <div style={s.hero}>
-        <div>
-          <h1 style={s.heroTitle}>Good morning, {family?.name?.split(' ')[0]} 👋</h1>
-          <p style={s.heroSub}>Monitor your elders' health alerts and stay informed in real time.</p>
-        </div>
-        <div style={s.heroBadge}>
-          <span style={s.heroDot}></span> System active
-        </div>
-      </div>
+      <div style={s.body}>
 
-      <div style={s.searchCard}>
-        <div style={s.searchLabel}>
-          <span style={s.searchIcon}>🔍</span>
+        {/* HERO */}
+        <div style={s.hero}>
           <div>
-            <div style={s.searchTitle}>View elder alerts</div>
-            <div style={s.searchSub}>Enter an elder ID to fetch their health alerts</div>
+            <p style={s.dateText}>{getDate()}</p>
+            <h1 style={s.greeting}>{getGreeting()}, {family?.name?.split(' ')[0]} 👋</h1>
+            <p style={s.heroSub}>Monitor your elders' digital safety and stay informed in real time.</p>
+          </div>
+          <div style={s.activeBadge}>
+            <span style={s.activeDot}></span>
+            System active
           </div>
         </div>
-        <div style={s.searchRow}>
-          <input
-            type="text"
-            placeholder="Paste Elder ID here (e.g. 6873fa2b...)"
-            value={elderId}
-            onChange={e => setElderId(e.target.value)}
-            style={s.input}
-            autoComplete="off"
-          />
-          <button onClick={fetchAlerts} style={s.fetchBtn}>Fetch Alerts</button>
-        </div>
-      </div>
 
-      {error && <div style={s.error}>{error}</div>}
-
-      {fetched && alerts.length === 0 && (
-        <div style={s.empty}>
-          <div style={s.emptyIcon}>✅</div>
-          <div style={s.emptyTitle}>No alerts found</div>
-          <div style={s.emptySub}>This elder has no recorded alerts yet.</div>
-        </div>
-      )}
-
-      {alerts.map(alert => (
-        <div key={alert._id} style={{ ...s.alertCard, borderLeft: `4px solid ${alert.severity === 'high' ? '#e53935' : '#f5a623'}` }}>
-          <div style={s.alertTop}>
-            <div style={s.alertLeft}>
-              <span style={{
-                ...s.severityBadge,
-                background: alert.severity === 'high' ? '#fff0f0' : '#fffbea',
-                color: alert.severity === 'high' ? '#e53935' : '#f59e0b'
-              }}>
-                {alert.severity === 'high' ? '🔴' : '🟡'} {alert.severity} severity
-              </span>
-              <span style={s.alertType}>{alert.type?.toUpperCase()}</span>
+        {/* STATS */}
+        {fetched && (
+          <div style={s.statsRow}>
+            <div style={s.statCard}>
+              <p style={s.statLabel}>Total alerts</p>
+              <p style={s.statNum}>{alerts.length}</p>
             </div>
-            {alert.isResolved
-              ? <span style={s.resolvedTag}>✅ Resolved</span>
-              : <button onClick={() => resolveAlert(alert._id)} style={s.resolveBtn}>Mark resolved</button>
-            }
+            <div style={{ ...s.statCard, background: unresolved > 0 ? '#fff7ed' : undefined }}>
+              <p style={s.statLabel}>Active alerts</p>
+              <p style={{ ...s.statNum, color: unresolved > 0 ? '#c2410c' : '#16a34a' }}>{unresolved}</p>
+            </div>
+            <div style={s.statCard}>
+              <p style={s.statLabel}>Resolved</p>
+              <p style={{ ...s.statNum, color: '#16a34a' }}>{resolved}</p>
+            </div>
           </div>
-          <p style={s.alertMsg}>{alert.message}</p>
-          {alert.messageHindi && <p style={s.alertHindi}>{alert.messageHindi}</p>}
-          <div style={s.alertTime}>{new Date(alert.createdAt).toLocaleString()}</div>
+        )}
+
+        {/* SEARCH */}
+        <div style={s.searchCard}>
+          <div style={s.searchTop}>
+            <div>
+              <p style={s.searchTitle}>View elder alerts</p>
+              <p style={s.searchSub}>Enter the elder ID to fetch their safety alerts</p>
+            </div>
+          </div>
+          <div style={s.searchRow}>
+            <input
+              type="text"
+              placeholder="Paste elder ID here..."
+              value={elderId}
+              onChange={e => setElderId(e.target.value)}
+              onKeyDown={e => e.key === 'Enter' && fetchAlerts()}
+              style={s.input}
+              autoComplete="off"
+            />
+            <button onClick={fetchAlerts} style={s.fetchBtn} disabled={loading}>
+              {loading ? 'Loading...' : 'Fetch alerts'}
+            </button>
+          </div>
         </div>
-      ))}
+
+        {error && <div style={s.errorBox}>{error}</div>}
+
+        {/* ALERTS */}
+        {fetched && alerts.length === 0 && (
+          <div style={s.empty}>
+            <p style={s.emptyIcon}>✅</p>
+            <p style={s.emptyTitle}>No alerts found</p>
+            <p style={s.emptySub}>This elder has no recorded safety alerts.</p>
+          </div>
+        )}
+
+        {alerts.map(alert => (
+          <div key={alert._id} style={{
+            ...s.alertCard,
+            borderLeftColor: alert.severity === 'high' ? '#dc2626' : alert.severity === 'medium' ? '#d97706' : '#16a34a'
+          }}>
+            <div style={s.alertTop}>
+              <div style={s.alertLeft}>
+                <span style={{
+                  ...s.severityPill,
+                  background: alert.severity === 'high' ? '#fef2f2' : alert.severity === 'medium' ? '#fffbeb' : '#f0fdf4',
+                  color: alert.severity === 'high' ? '#dc2626' : alert.severity === 'medium' ? '#d97706' : '#16a34a',
+                  border: `0.5px solid ${alert.severity === 'high' ? '#fca5a5' : alert.severity === 'medium' ? '#fcd34d' : '#86efac'}`
+                }}>
+                  {alert.severity} severity
+                </span>
+                <span style={s.alertTypeTag}>
+                  {ALERT_LABELS[alert.type] || alert.type}
+                </span>
+              </div>
+              {alert.isResolved
+                ? <span style={s.resolvedTag}>✅ Resolved</span>
+                : <button onClick={() => resolveAlert(alert._id)} style={s.resolveBtn}>Mark resolved</button>
+              }
+            </div>
+            <p style={s.alertMsg}>{alert.message}</p>
+            {alert.messageHindi && <p style={s.alertHindi}>{alert.messageHindi}</p>}
+            <p style={s.alertTime}>{new Date(alert.createdAt).toLocaleString('en-IN', {
+              day: 'numeric', month: 'short', year: 'numeric',
+              hour: '2-digit', minute: '2-digit'
+            })}</p>
+          </div>
+        ))}
+
+      </div>
     </div>
   );
 }
 
 const s = {
-  page: { minHeight: '100vh', background: '#f0f4f8', fontFamily: '-apple-system, BlinkMacSystemFont, sans-serif' },
-  nav: { background: '#fff', borderBottom: '1px solid #e8e8e8', padding: '0 32px', height: '60px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', position: 'sticky', top: 0, zIndex: 10 },
+  page: { minHeight: '100vh', background: '#f8fafc', fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif' },
+  nav: { background: '#fff', borderBottom: '0.5px solid #e2e8f0', padding: '0 32px', height: '56px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', position: 'sticky', top: 0, zIndex: 10 },
   navLeft: { display: 'flex', alignItems: 'center', gap: '8px' },
-  navLogo: { fontSize: '20px' },
-  navBrand: { fontSize: '17px', fontWeight: 700, color: '#0a1628', letterSpacing: '-0.3px' },
-  navRight: { display: 'flex', alignItems: 'center', gap: '10px' },
-  userPill: { display: 'flex', alignItems: 'center', gap: '8px', background: '#f5f5f5', padding: '6px 12px 6px 6px', borderRadius: '100px' },
-  avatar: { width: '26px', height: '26px', background: '#0a1628', color: '#fff', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '12px', fontWeight: 700 },
-  userName: { fontSize: '13px', fontWeight: 500, color: '#0a1628' },
-  addBtn: { padding: '8px 16px', background: '#0a1628', color: '#fff', border: 'none', borderRadius: '8px', fontSize: '13px', fontWeight: 600, cursor: 'pointer' },
-  logoutBtn: { padding: '8px 16px', background: 'transparent', border: '1px solid #e0e0e0', borderRadius: '8px', fontSize: '13px', fontWeight: 500, cursor: 'pointer', color: '#666' },
-  hero: { padding: '32px 32px 0', display: 'flex', alignItems: 'center', justifyContent: 'space-between' },
-  heroTitle: { fontSize: '24px', fontWeight: 700, color: '#0a1628', letterSpacing: '-0.4px' },
-  heroSub: { fontSize: '13px', color: '#888', marginTop: '5px' },
-  heroBadge: { display: 'flex', alignItems: 'center', gap: '6px', background: '#e8f5e9', color: '#388e3c', fontSize: '12px', fontWeight: 500, padding: '6px 14px', borderRadius: '100px' },
-  heroDot: { width: '7px', height: '7px', background: '#4caf50', borderRadius: '50%', display: 'inline-block' },
-  searchCard: { margin: '20px 32px', background: '#fff', borderRadius: '14px', padding: '20px 24px', border: '1px solid #e8e8e8' },
-  searchLabel: { display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '16px' },
-  searchIcon: { fontSize: '20px' },
-  searchTitle: { fontSize: '14px', fontWeight: 600, color: '#0a1628' },
-  searchSub: { fontSize: '12px', color: '#999', marginTop: '2px' },
-  searchRow: { display: 'flex', gap: '10px' },
-  input: { flex: 1, height: '42px', padding: '0 14px', borderRadius: '8px', border: '1px solid #e0e0e0', background: '#fafafa', fontSize: '13px', outline: 'none', color: '#0a1628' },
-  fetchBtn: { height: '42px', padding: '0 20px', background: '#0a1628', color: '#fff', border: 'none', borderRadius: '8px', fontWeight: 600, cursor: 'pointer', fontSize: '13px', whiteSpace: 'nowrap' },
-  error: { margin: '0 32px 16px', background: '#fff0f0', color: '#e53935', padding: '12px 16px', borderRadius: '10px', fontSize: '13px' },
-  empty: { margin: '40px auto', textAlign: 'center' },
-  emptyIcon: { fontSize: '36px', marginBottom: '12px' },
-  emptyTitle: { fontSize: '16px', fontWeight: 600, color: '#0a1628' },
-  emptySub: { fontSize: '13px', color: '#999', marginTop: '4px' },
-  alertCard: { margin: '0 32px 12px', background: '#fff', borderRadius: '12px', padding: '18px 20px', border: '1px solid #e8e8e8' },
+  navIcon: { fontSize: '18px' },
+  navBrand: { fontSize: '16px', fontWeight: 700, color: '#0f172a', letterSpacing: '-0.3px' },
+  navRight: { display: 'flex', alignItems: 'center', gap: '8px' },
+  userPill: { display: 'flex', alignItems: 'center', gap: '7px', background: '#f1f5f9', padding: '5px 12px 5px 5px', borderRadius: '100px', border: '0.5px solid #e2e8f0' },
+  avatar: { width: '24px', height: '24px', background: '#0f172a', color: '#fff', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '11px', fontWeight: 700 },
+  userName: { fontSize: '13px', fontWeight: 500, color: '#0f172a' },
+  addBtn: { padding: '7px 14px', background: '#0f172a', color: '#fff', border: 'none', borderRadius: '8px', fontSize: '13px', fontWeight: 600, cursor: 'pointer', letterSpacing: '-0.1px' },
+  logoutBtn: { padding: '7px 14px', background: 'transparent', border: '0.5px solid #e2e8f0', borderRadius: '8px', fontSize: '13px', color: '#64748b', cursor: 'pointer' },
+  body: { maxWidth: '800px', margin: '0 auto', padding: '32px 24px' },
+  hero: { display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '24px' },
+  dateText: { fontSize: '12px', color: '#94a3b8', marginBottom: '4px', textTransform: 'uppercase', letterSpacing: '0.5px' },
+  greeting: { fontSize: '24px', fontWeight: 700, color: '#0f172a', letterSpacing: '-0.5px', margin: '0 0 6px' },
+  heroSub: { fontSize: '14px', color: '#64748b', margin: 0 },
+  activeBadge: { display: 'flex', alignItems: 'center', gap: '6px', background: '#f0fdf4', border: '0.5px solid #bbf7d0', borderRadius: '100px', padding: '6px 14px', fontSize: '12px', color: '#16a34a', fontWeight: 500, whiteSpace: 'nowrap' },
+  activeDot: { width: '6px', height: '6px', background: '#16a34a', borderRadius: '50%', display: 'inline-block' },
+  statsRow: { display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: '12px', marginBottom: '20px' },
+  statCard: { background: '#fff', border: '0.5px solid #e2e8f0', borderRadius: '12px', padding: '16px 20px' },
+  statLabel: { fontSize: '11px', color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.5px', margin: '0 0 8px' },
+  statNum: { fontSize: '28px', fontWeight: 700, color: '#0f172a', margin: 0, letterSpacing: '-0.5px' },
+  searchCard: { background: '#fff', border: '0.5px solid #e2e8f0', borderRadius: '12px', padding: '20px', marginBottom: '16px' },
+  searchTop: { marginBottom: '14px' },
+  searchTitle: { fontSize: '14px', fontWeight: 600, color: '#0f172a', margin: '0 0 3px' },
+  searchSub: { fontSize: '12px', color: '#94a3b8', margin: 0 },
+  searchRow: { display: 'flex', gap: '8px' },
+  input: { flex: 1, height: '40px', padding: '0 14px', borderRadius: '8px', border: '0.5px solid #e2e8f0', background: '#f8fafc', fontSize: '13px', color: '#0f172a', outline: 'none', fontFamily: 'monospace' },
+  fetchBtn: { height: '40px', padding: '0 18px', background: '#0f172a', color: '#fff', border: 'none', borderRadius: '8px', fontSize: '13px', fontWeight: 600, cursor: 'pointer', whiteSpace: 'nowrap' },
+  errorBox: { background: '#fef2f2', border: '0.5px solid #fca5a5', color: '#dc2626', padding: '12px 16px', borderRadius: '10px', fontSize: '13px', marginBottom: '16px' },
+  empty: { textAlign: 'center', padding: '48px 0' },
+  emptyIcon: { fontSize: '36px', margin: '0 0 12px' },
+  emptyTitle: { fontSize: '16px', fontWeight: 600, color: '#0f172a', margin: '0 0 4px' },
+  emptySub: { fontSize: '13px', color: '#94a3b8', margin: 0 },
+  alertCard: { background: '#fff', border: '0.5px solid #e2e8f0', borderLeft: '3px solid', borderRadius: '0 12px 12px 0', padding: '16px 20px', marginBottom: '10px' },
   alertTop: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' },
-  alertLeft: { display: 'flex', alignItems: 'center', gap: '10px' },
-  severityBadge: { fontSize: '11px', fontWeight: 600, padding: '4px 10px', borderRadius: '100px' },
-  alertType: { fontSize: '11px', fontWeight: 600, color: '#999', letterSpacing: '0.5px' },
-  resolvedTag: { fontSize: '12px', color: '#388e3c', fontWeight: 600 },
-  resolveBtn: { padding: '6px 14px', background: '#0a1628', color: '#fff', border: 'none', borderRadius: '6px', fontSize: '12px', fontWeight: 600, cursor: 'pointer' },
-  alertMsg: { fontSize: '14px', color: '#0a1628', lineHeight: 1.5, marginBottom: '6px' },
-  alertHindi: { fontSize: '13px', color: '#666', lineHeight: 1.6, marginBottom: '8px' },
-  alertTime: { fontSize: '11px', color: '#bbb' }
+  alertLeft: { display: 'flex', alignItems: 'center', gap: '8px' },
+  severityPill: { fontSize: '11px', fontWeight: 600, padding: '3px 10px', borderRadius: '100px', textTransform: 'capitalize' },
+  alertTypeTag: { fontSize: '11px', fontWeight: 600, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.4px' },
+  resolvedTag: { fontSize: '12px', color: '#16a34a', fontWeight: 600 },
+  resolveBtn: { padding: '6px 14px', background: '#0f172a', color: '#fff', border: 'none', borderRadius: '6px', fontSize: '12px', fontWeight: 600, cursor: 'pointer' },
+  alertMsg: { fontSize: '14px', color: '#0f172a', lineHeight: 1.6, margin: '0 0 6px' },
+  alertHindi: { fontSize: '13px', color: '#64748b', lineHeight: 1.7, margin: '0 0 8px' },
+  alertTime: { fontSize: '11px', color: '#cbd5e1', margin: 0 }
 };
 
 export default Dashboard;

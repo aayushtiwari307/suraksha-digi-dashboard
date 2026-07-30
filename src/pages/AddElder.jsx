@@ -21,7 +21,7 @@ function AddElder() {
     try {
       const res = await API.post('/elders/register', { name, phone, age: Number(age), language, password });
       setElderId(res.data.elder.id);
-      setSuccess(`Elder registered successfully!`);
+      setSuccess('Elder registered successfully!');
       setName(''); setPhone(''); setAge(''); setPassword('');
     } catch (err) {
       setError(err.response?.data?.message || 'Failed to register elder');
@@ -32,63 +32,116 @@ function AddElder() {
 
   return (
     <div style={s.page}>
-      <div style={s.nav}>
-        <div style={s.navLeft}>
-          <span style={s.navLogo}>🛡️</span>
-          <span style={s.navBrand}>Suraksha<span style={{ color: '#f5a623' }}>Digi</span></span>
-        </div>
-        <button onClick={() => navigate('/dashboard')} style={s.backBtn}>← Back to dashboard</button>
-      </div>
 
-      <div style={s.wrap}>
+      {/* NAV */}
+      <nav style={s.nav}>
+        <div style={s.navLeft}>
+          <span style={s.navIcon}>🛡️</span>
+          <span style={s.navBrand}>Suraksha<span style={{ color: '#d97706' }}>Digi</span></span>
+        </div>
+        <button onClick={() => navigate('/dashboard')} style={s.backBtn}>
+          ← Back to dashboard
+        </button>
+      </nav>
+
+      <div style={s.body}>
+
+        {/* HEADER */}
         <div style={s.header}>
           <h1 style={s.title}>Add a new elder</h1>
-          <p style={s.sub}>Register an elder under your care to start monitoring their safety</p>
+          <p style={s.sub}>Register an elder under your care to start monitoring their digital safety.</p>
         </div>
 
         <div style={s.card}>
-          {error && <div style={s.error}>{error}</div>}
 
+          {/* SUCCESS */}
           {success && (
             <div style={s.successBox}>
-              <div style={s.successTitle}>✅ {success}</div>
-              <div style={s.successSub}>Copy the Elder ID below — you'll need it to fetch alerts on the dashboard.</div>
+              <div style={s.successHeader}>
+                <span style={s.successIcon}>✅</span>
+                <span style={s.successTitle}>{success}</span>
+              </div>
+              <p style={s.successSub}>Save the Elder ID below — you'll need it on the dashboard to view alerts.</p>
               <div style={s.idBox}>
-                <span style={s.idLabel}>Elder ID</span>
-                <span style={s.idValue}>{elderId}</span>
+                <p style={s.idLabel}>Elder ID</p>
+                <p style={s.idValue}>{elderId}</p>
               </div>
             </div>
           )}
 
+          {error && <div style={s.errorBox}>{error}</div>}
+
           <form onSubmit={handleSubmit} autoComplete="off">
+
             <div style={s.field}>
-              <label style={s.label}>Full Name</label>
-              <input style={s.input} type="text" value={name} onChange={e => setName(e.target.value)} placeholder="e.g. Suresh Sharma" autoComplete="off" required />
+              <label style={s.label}>Full name</label>
+              <input
+                style={s.input}
+                type="text"
+                value={name}
+                onChange={e => setName(e.target.value)}
+                placeholder="e.g. Suresh Sharma"
+                autoComplete="off"
+                required
+              />
             </div>
+
             <div style={s.field}>
-              <label style={s.label}>Phone Number</label>
-              <input style={s.input} type="text" value={phone} onChange={e => setPhone(e.target.value)} placeholder="10-digit mobile number" autoComplete="off" required />
+              <label style={s.label}>Phone number</label>
+              <input
+                style={s.input}
+                type="text"
+                value={phone}
+                onChange={e => setPhone(e.target.value)}
+                placeholder="10-digit mobile number"
+                autoComplete="off"
+                required
+              />
             </div>
-            <div style={{ display: 'flex', gap: '16px' }}>
+
+            <div style={s.row}>
               <div style={{ flex: 1, ...s.field }}>
                 <label style={s.label}>Age</label>
-                <input style={s.input} type="number" value={age} onChange={e => setAge(e.target.value)} placeholder="e.g. 68" required />
+                <input
+                  style={s.input}
+                  type="number"
+                  value={age}
+                  onChange={e => setAge(e.target.value)}
+                  placeholder="e.g. 68"
+                  required
+                />
               </div>
               <div style={{ flex: 1, ...s.field }}>
-                <label style={s.label}>Preferred Language</label>
-                <select style={s.input} value={language} onChange={e => setLanguage(e.target.value)}>
+                <label style={s.label}>Preferred language</label>
+                <select
+                  style={s.input}
+                  value={language}
+                  onChange={e => setLanguage(e.target.value)}
+                >
                   <option value="hindi">Hindi</option>
                   <option value="english">English</option>
                 </select>
               </div>
             </div>
+
             <div style={s.field}>
-              <label style={s.label}>Set a Password</label>
-              <input style={s.input} type="password" value={password} onChange={e => setPassword(e.target.value)} placeholder="Elder will use this to log in" autoComplete="new-password" required />
+              <label style={s.label}>Set a password</label>
+              <p style={s.hint}>Elder will use this password to log in and confirm medication.</p>
+              <input
+                style={s.input}
+                type="password"
+                value={password}
+                onChange={e => setPassword(e.target.value)}
+                placeholder="Create a strong password"
+                autoComplete="new-password"
+                required
+              />
             </div>
+
             <button style={s.btn} type="submit" disabled={loading}>
-              {loading ? 'Registering...' : 'Register Elder'}
+              {loading ? 'Registering...' : 'Register elder'}
             </button>
+
           </form>
         </div>
       </div>
@@ -97,28 +150,32 @@ function AddElder() {
 }
 
 const s = {
-  page: { minHeight: '100vh', background: '#f0f4f8', fontFamily: '-apple-system, BlinkMacSystemFont, sans-serif' },
-  nav: { background: '#fff', borderBottom: '1px solid #e8e8e8', padding: '0 32px', height: '60px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' },
+  page: { minHeight: '100vh', background: '#f8fafc', fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif' },
+  nav: { background: '#fff', borderBottom: '0.5px solid #e2e8f0', padding: '0 32px', height: '56px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', position: 'sticky', top: 0, zIndex: 10 },
   navLeft: { display: 'flex', alignItems: 'center', gap: '8px' },
-  navLogo: { fontSize: '20px' },
-  navBrand: { fontSize: '17px', fontWeight: 700, color: '#0a1628', letterSpacing: '-0.3px' },
-  backBtn: { padding: '8px 16px', background: 'transparent', border: '1px solid #e0e0e0', borderRadius: '8px', fontSize: '13px', fontWeight: 500, cursor: 'pointer', color: '#666' },
-  wrap: { maxWidth: '580px', margin: '0 auto', padding: '36px 20px' },
-  header: { marginBottom: '20px' },
-  title: { fontSize: '22px', fontWeight: 700, color: '#0a1628', letterSpacing: '-0.4px' },
-  sub: { fontSize: '13px', color: '#888', marginTop: '5px' },
-  card: { background: '#fff', borderRadius: '16px', padding: '28px', border: '1px solid #e8e8e8' },
-  error: { background: '#fff0f0', color: '#e53935', padding: '12px 14px', borderRadius: '8px', fontSize: '13px', marginBottom: '16px' },
-  successBox: { background: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: '10px', padding: '16px', marginBottom: '20px' },
-  successTitle: { fontSize: '14px', fontWeight: 600, color: '#166534' },
-  successSub: { fontSize: '12px', color: '#166534', marginTop: '4px', opacity: 0.8 },
-  idBox: { marginTop: '12px', background: '#fff', border: '1px solid #d1fae5', borderRadius: '8px', padding: '10px 14px', display: 'flex', flexDirection: 'column', gap: '4px' },
-  idLabel: { fontSize: '10px', fontWeight: 700, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.5px' },
-  idValue: { fontSize: '13px', fontWeight: 600, color: '#0a1628', wordBreak: 'break-all', fontFamily: 'monospace' },
-  field: { marginBottom: '14px' },
-  label: { display: 'block', fontSize: '11px', fontWeight: 600, color: '#888', marginBottom: '6px', letterSpacing: '0.4px', textTransform: 'uppercase' },
-  input: { width: '100%', height: '42px', padding: '0 14px', borderRadius: '8px', border: '1px solid #e0e0e0', background: '#fafafa', fontSize: '14px', outline: 'none', boxSizing: 'border-box', color: '#0a1628' },
-  btn: { width: '100%', height: '42px', background: '#0a1628', color: '#fff', border: 'none', borderRadius: '8px', fontSize: '14px', fontWeight: 600, cursor: 'pointer', marginTop: '6px' },
+  navIcon: { fontSize: '18px' },
+  navBrand: { fontSize: '16px', fontWeight: 700, color: '#0f172a', letterSpacing: '-0.3px' },
+  backBtn: { padding: '7px 14px', background: 'transparent', border: '0.5px solid #e2e8f0', borderRadius: '8px', fontSize: '13px', color: '#64748b', cursor: 'pointer' },
+  body: { maxWidth: '560px', margin: '0 auto', padding: '36px 24px' },
+  header: { marginBottom: '24px' },
+  title: { fontSize: '22px', fontWeight: 700, color: '#0f172a', letterSpacing: '-0.4px', margin: '0 0 6px' },
+  sub: { fontSize: '14px', color: '#64748b', margin: 0 },
+  card: { background: '#fff', border: '0.5px solid #e2e8f0', borderRadius: '16px', padding: '28px' },
+  successBox: { background: '#f0fdf4', border: '0.5px solid #bbf7d0', borderRadius: '10px', padding: '16px', marginBottom: '24px' },
+  successHeader: { display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '6px' },
+  successIcon: { fontSize: '16px' },
+  successTitle: { fontSize: '14px', fontWeight: 600, color: '#15803d' },
+  successSub: { fontSize: '12px', color: '#16a34a', margin: '0 0 12px' },
+  idBox: { background: '#fff', border: '0.5px solid #bbf7d0', borderRadius: '8px', padding: '12px 14px' },
+  idLabel: { fontSize: '10px', fontWeight: 700, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.5px', margin: '0 0 4px' },
+  idValue: { fontSize: '13px', fontWeight: 600, color: '#0f172a', fontFamily: 'monospace', wordBreak: 'break-all', margin: 0 },
+  errorBox: { background: '#fef2f2', border: '0.5px solid #fca5a5', color: '#dc2626', padding: '12px 14px', borderRadius: '8px', fontSize: '13px', marginBottom: '16px' },
+  field: { marginBottom: '16px' },
+  row: { display: 'flex', gap: '16px' },
+  label: { display: 'block', fontSize: '11px', fontWeight: 600, color: '#64748b', marginBottom: '6px', textTransform: 'uppercase', letterSpacing: '0.4px' },
+  hint: { fontSize: '12px', color: '#94a3b8', margin: '0 0 6px' },
+  input: { width: '100%', height: '40px', padding: '0 14px', borderRadius: '8px', border: '0.5px solid #e2e8f0', background: '#f8fafc', fontSize: '14px', color: '#0f172a', outline: 'none', boxSizing: 'border-box' },
+  btn: { width: '100%', height: '42px', background: '#0f172a', color: '#fff', border: 'none', borderRadius: '8px', fontSize: '14px', fontWeight: 600, cursor: 'pointer', marginTop: '8px', letterSpacing: '-0.1px' },
 };
 
 export default AddElder;
