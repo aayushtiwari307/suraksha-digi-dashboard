@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import API from '../api/axios';
+import { useAuth } from '../context/AuthContext';
 
 function AddElder() {
   const [name, setName] = useState('');
@@ -10,29 +11,20 @@ function AddElder() {
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
+  const [elderId, setElderId] = useState('');
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
+  const { family } = useAuth();
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    setError('');
-    setSuccess('');
+    setError(''); setSuccess('');
     setLoading(true);
-
     try {
-      const res = await API.post('/elders/register', {
-        name,
-        phone,
-        age: Number(age),
-        language,
-        password
-      });
-
-      setSuccess(`Elder registered! Elder ID: ${res.data.elder.id}`);
-      setName('');
-      setPhone('');
-      setAge('');
-      setPassword('');
+      const res = await API.post('/elders/register', { name, phone, age: Number(age), language, password });
+      setElderId(res.data.elder.id);
+      setSuccess(`Elder registered successfully!`);
+      setName(''); setPhone(''); setAge(''); setPassword('');
     } catch (err) {
       setError(err.response?.data?.message || 'Failed to register elder');
     } finally {
@@ -41,173 +33,95 @@ function AddElder() {
   };
 
   return (
-    <div style={styles.page}>
-      <div style={styles.header}>
-        <h1 style={styles.logo}>Suraksha<span style={{ color: '#D4820A' }}>Digi</span></h1>
-        <button onClick={() => navigate('/dashboard')} style={styles.backBtn}>
-          ← Back to Dashboard
-        </button>
+    <div style={s.page}>
+      {/* NAVBAR */}
+      <div style={s.nav}>
+        <div style={s.navLeft}>
+          <span style={s.navLogo}>🛡️</span>
+          <span style={s.navBrand}>Suraksha<span style={{ color: '#f5a623' }}>Digi</span></span>
+        </div>
+        <button onClick={() => navigate('/dashboard')} style={s.backBtn}>← Back to dashboard</button>
       </div>
 
-      <div style={styles.card}>
-        <h2 style={styles.title}>Add a New Elder</h2>
-        <p style={styles.subtitle}>Register an elder under your care to start monitoring their safety</p>
+      <div style={s.wrap}>
+        <div style={s.header}>
+          <h1 style={s.title}>Add a new elder</h1>
+          <p style={s.sub}>Register an elder under your care to start monitoring their safety</p>
+        </div>
 
-        {error && <div style={styles.error}>{error}</div>}
-        {success && <div style={styles.success}>{success}</div>}
+        <div style={s.card}>
+          {error && <div style={s.error}>{error}</div>}
 
-        <form onSubmit={handleSubmit}>
-          <label style={styles.label}>Full Name</label>
-          <input
-            type="text"
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            placeholder="e.g. Suresh Sharma"
-            style={styles.input}
-            required
-          />
-
-          <label style={styles.label}>Phone Number</label>
-          <input
-            type="text"
-            value={phone}
-            onChange={(e) => setPhone(e.target.value)}
-            placeholder="10-digit mobile number"
-            style={styles.input}
-            required
-          />
-
-          <div style={{ display: 'flex', gap: '16px' }}>
-            <div style={{ flex: 1 }}>
-              <label style={styles.label}>Age</label>
-              <input
-                type="number"
-                value={age}
-                onChange={(e) => setAge(e.target.value)}
-                placeholder="e.g. 68"
-                style={styles.input}
-                required
-              />
+          {success && (
+            <div style={s.successBox}>
+              <div style={s.successTitle}>✅ {success}</div>
+              <div style={s.successSub}>Copy the Elder ID below — you'll need it to fetch alerts on the dashboard.</div>
+              <div style={s.idBox}>
+                <span style={s.idLabel}>Elder ID</span>
+                <span style={s.idValue}>{elderId}</span>
+              </div>
             </div>
-            <div style={{ flex: 1 }}>
-              <label style={styles.label}>Preferred Language</label>
-              <select
-                value={language}
-                onChange={(e) => setLanguage(e.target.value)}
-                style={styles.input}
-              >
-                <option value="hindi">Hindi</option>
-                <option value="english">English</option>
-              </select>
+          )}
+
+          <form onSubmit={handleSubmit} autoComplete="off">
+            <div style={s.field}>
+              <label style={s.label}>Full Name</label>
+              <input style={s.input} type="text" value={name} onChange={e => setName(e.target.value)} placeholder="e.g. Suresh Sharma" autoComplete="off" required />
             </div>
-          </div>
-
-          <label style={styles.label}>Set a Password</label>
-          <input
-            type="password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            placeholder="Elder will use this to log in"
-            style={styles.input}
-            required
-          />
-
-          <button type="submit" style={styles.button} disabled={loading}>
-            {loading ? 'Registering...' : 'Register Elder'}
-          </button>
-        </form>
+            <div style={s.field}>
+              <label style={s.label}>Phone Number</label>
+              <input style={s.input} type="text" value={phone} onChange={e => setPhone(e.target.value)} placeholder="10-digit mobile number" autoComplete="off" required />
+            </div>
+            <div style={{ display: 'flex', gap: '16px' }}>
+              <div style={{ flex: 1, ...s.field }}>
+                <label style={s.label}>Age</label>
+                <input style={s.input} type="number" value={age} onChange={e => setAge(e.target.value)} placeholder="e.g. 68" required />
+              </div>
+              <div style={{ flex: 1, ...s.field }}>
+                <label style={s.label}>Preferred Language</label>
+                <select style={s.input} value={language} onChange={e => setLanguage(e.target.value)}>
+                  <option value="hindi">Hindi</option>
+                  <option value="english">English</option>
+                </select>
+              </div>
+            </div>
+            <div style={s.field}>
+              <label style={s.label}>Set a Password</label>
+              <input style={s.input} type="password" value={password} onChange={e => setPassword(e.target.value)} placeholder="Elder will use this to log in" autoComplete="new-password" required />
+            </div>
+            <button style={s.btn} type="submit" disabled={loading}>
+              {loading ? 'Registering...' : 'Register Elder'}
+            </button>
+          </form>
+        </div>
       </div>
     </div>
   );
 }
 
-const styles = {
-  page: {
-    maxWidth: '600px',
-    margin: '0 auto',
-    padding: '40px 20px'
-  },
-  header: {
-    display: 'flex',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: '28px'
-  },
-  logo: {
-    fontSize: '24px',
-    fontWeight: 700,
-    color: '#1A1208'
-  },
-  backBtn: {
-    padding: '9px 16px',
-    background: 'transparent',
-    border: '1.5px solid rgba(26,18,8,0.15)',
-    borderRadius: '8px',
-    cursor: 'pointer',
-    fontSize: '13px',
-    fontWeight: 500
-  },
-  card: {
-    background: '#fff',
-    border: '1px solid rgba(212,130,10,0.15)',
-    borderRadius: '16px',
-    padding: '32px'
-  },
-  title: {
-    fontSize: '20px',
-    fontWeight: 700,
-    marginBottom: '6px'
-  },
-  subtitle: {
-    fontSize: '13px',
-    color: '#8C7B6B',
-    marginBottom: '24px'
-  },
-  label: {
-    display: 'block',
-    fontSize: '13px',
-    fontWeight: 600,
-    color: '#4A4035',
-    marginBottom: '6px',
-    marginTop: '16px'
-  },
-  input: {
-    width: '100%',
-    padding: '12px 14px',
-    borderRadius: '10px',
-    border: '1.5px solid rgba(212,130,10,0.2)',
-    outline: 'none',
-    fontSize: '14px'
-  },
-  button: {
-    width: '100%',
-    padding: '13px',
-    background: '#1D6B6B',
-    color: '#fff',
-    border: 'none',
-    borderRadius: '10px',
-    fontSize: '15px',
-    fontWeight: 600,
-    marginTop: '24px',
-    cursor: 'pointer'
-  },
-  error: {
-    background: '#FDECEA',
-    color: '#C84B3C',
-    padding: '10px 14px',
-    borderRadius: '10px',
-    fontSize: '13px',
-    marginBottom: '16px'
-  },
-  success: {
-    background: '#E0F4F1',
-    color: '#1D6B6B',
-    padding: '10px 14px',
-    borderRadius: '10px',
-    fontSize: '13px',
-    marginBottom: '16px',
-    wordBreak: 'break-all'
-  }
+const s = {
+  page: { minHeight: '100vh', background: '#f0f4f8', fontFamily: '-apple-system, BlinkMacSystemFont, sans-serif' },
+  nav: { background: '#fff', borderBottom: '1px solid #e8e8e8', padding: '0 32px', height: '60px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' },
+  navLeft: { display: 'flex', alignItems: 'center', gap: '8px' },
+  navLogo: { fontSize: '20px' },
+  navBrand: { fontSize: '17px', fontWeight: 700, color: '#0a1628', letterSpacing: '-0.3px' },
+  backBtn: { padding: '8px 16px', background: 'transparent', border: '1px solid #e0e0e0', borderRadius: '8px', fontSize: '13px', fontWeight: 500, cursor: 'pointer', color: '#666' },
+  wrap: { maxWidth: '580px', margin: '0 auto', padding: '36px 20px' },
+  header: { marginBottom: '20px' },
+  title: { fontSize: '22px', fontWeight: 700, color: '#0a1628', letterSpacing: '-0.4px' },
+  sub: { fontSize: '13px', color: '#888', marginTop: '5px' },
+  card: { background: '#fff', borderRadius: '16px', padding: '28px', border: '1px solid #e8e8e8' },
+  error: { background: '#fff0f0', color: '#e53935', padding: '12px 14px', borderRadius: '8px', fontSize: '13px', marginBottom: '16px' },
+  successBox: { background: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: '10px', padding: '16px', marginBottom: '20px' },
+  successTitle: { fontSize: '14px', fontWeight: 600, color: '#166534' },
+  successSub: { fontSize: '12px', color: '#166534', marginTop: '4px', opacity: 0.8 },
+  idBox: { marginTop: '12px', background: '#fff', border: '1px solid #d1fae5', borderRadius: '8px', padding: '10px 14px', display: 'flex', flexDirection: 'column', gap: '4px' },
+  idLabel: { fontSize: '10px', fontWeight: 700, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.5px' },
+  idValue: { fontSize: '13px', fontWeight: 600, color: '#0a1628', wordBreak: 'break-all', fontFamily: 'monospace' },
+  field: { marginBottom: '14px' },
+  label: { display: 'block', fontSize: '11px', fontWeight: 600, color: '#888', marginBottom: '6px', letterSpacing: '0.4px', textTransform: 'uppercase' },
+  input: { width: '100%', height: '42px', padding: '0 14px', borderRadius: '8px', border: '1px solid #e0e0e0', background: '#fafafa', fontSize: '14px', outline: 'none', boxSizing: 'border-box', color: '#0a1628' },
+  btn: { width: '100%', height: '42px', background: '#0a1628', color: '#fff', border: 'none', borderRadius: '8px', fontSize: '14px', fontWeight: 600, cursor: 'pointer', marginTop: '6px' },
 };
 
 export default AddElder;
