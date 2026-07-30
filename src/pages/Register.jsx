@@ -3,7 +3,8 @@ import { useNavigate, Link } from 'react-router-dom';
 import API from '../api/axios';
 import { useAuth } from '../context/AuthContext';
 
-function Login() {
+function Register() {
+  const [name, setName] = useState('');
   const [phone, setPhone] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
@@ -16,11 +17,11 @@ function Login() {
     setError('');
     setLoading(true);
     try {
-      const res = await API.post('/family/login', { phone, password });
+      const res = await API.post('/family/register', { name, phone, password });
       login(res.data.token, res.data.family);
       navigate('/dashboard');
     } catch (err) {
-      setError(err.response?.data?.message || 'Login failed');
+      setError(err.response?.data?.message || 'Registration failed');
     } finally {
       setLoading(false);
     }
@@ -31,21 +32,22 @@ function Login() {
       <div style={styles.card}>
         <div style={styles.badge}>🛡️ Preventive Safety System</div>
         <h1 style={styles.logo}>Suraksha<span style={{ color: '#D4820A' }}>Digi</span></h1>
-        <p style={styles.subtitle}>Sign in to monitor your family's safety</p>
+        <p style={styles.subtitle}>Create your family account</p>
         {error && <div style={styles.error}>{error}</div>}
         <form onSubmit={handleSubmit}>
+          <label style={styles.label}>Full Name</label>
+          <input type="text" value={name} onChange={(e) => setName(e.target.value)} placeholder="Aayush Tiwari" style={styles.input} required />
           <label style={styles.label}>Phone Number</label>
           <input type="text" value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="9876543210" style={styles.input} required />
           <label style={styles.label}>Password</label>
-          <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="Enter your password" style={styles.input} required />
+          <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="Create a password" style={styles.input} required />
           <button type="submit" style={styles.button} disabled={loading}>
-            {loading ? 'Signing in...' : 'Sign In'}
+            {loading ? 'Creating Account...' : 'Create Account'}
           </button>
         </form>
-        <p style={styles.footer}>Protecting elders, one alert at a time 🙏</p>
-        <p style={{ ...styles.footer, marginTop: '12px' }}>
-          New here?{' '}
-          <Link to="/register" style={{ color: '#1D6B6B', fontWeight: 600 }}>Create Account</Link>
+        <p style={styles.footer}>
+          Already have an account?{' '}
+          <Link to="/" style={{ color: '#1D6B6B', fontWeight: 600 }}>Sign In</Link>
         </p>
       </div>
     </div>
@@ -62,7 +64,7 @@ const styles = {
   input: { width: '100%', padding: '12px 14px', borderRadius: '10px', border: '1.5px solid rgba(212,130,10,0.2)', outline: 'none', fontSize: '14px', boxSizing: 'border-box' },
   button: { width: '100%', padding: '13px', background: '#1D6B6B', color: '#fff', border: 'none', borderRadius: '10px', fontSize: '15px', fontWeight: 600, marginTop: '24px', cursor: 'pointer' },
   error: { background: '#FDECEA', color: '#C84B3C', padding: '10px 14px', borderRadius: '10px', fontSize: '13px', marginBottom: '16px' },
-  footer: { textAlign: 'center', fontSize: '12px', color: '#8C7B6B', marginTop: '24px' }
+  footer: { textAlign: 'center', fontSize: '13px', color: '#8C7B6B', marginTop: '24px' }
 };
 
-export default Login;
+export default Register;
