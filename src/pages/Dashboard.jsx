@@ -19,31 +19,48 @@ const ALERT_LABELS = {
   confusion: 'Confusion detected',
   inactivity: 'Inactivity',
   unusual_transaction: 'Unusual transaction',
-  suspicious_link: 'Suspicious link'
+  suspicious_link: 'Suspicious link',
+  medication_missed: 'Medication missed'
+};
+
+const STATUS_STYLES = {
+  pending:  { bg: '#fffbeb', color: '#d97706', border: '#fcd34d', label: 'Pending' },
+  taken:    { bg: '#f0fdf4', color: '#16a34a', border: '#86efac', label: 'Taken' },
+  missed:   { bg: '#fef2f2', color: '#dc2626', border: '#fca5a5', label: 'Missed' },
 };
 
 function Dashboard() {
   const { family, logout } = useAuth();
   const navigate = useNavigate();
+
+  // Alerts state
   const [elderId, setElderId] = useState('');
   const [alerts, setAlerts] = useState([]);
-  const [error, setError] = useState('');
-  const [fetched, setFetched] = useState(false);
-  const [loading, setLoading] = useState(false);
+  const [alertError, setAlertError] = useState('');
+  const [alertFetched, setAlertFetched] = useState(false);
+  const [alertLoading, setAlertLoading] = useState(false);
+
+  // Medications state
+  const [medElderId, setMedElderId] = useState('');
+  const [medications, setMedications] = useState([]);
+  const [medError, setMedError] = useState('');
+  const [medFetched, setMedFetched] = useState(false);
+  const [medLoading, setMedLoading] = useState(false);
+  const [markingId, setMarkingId] = useState(null);
 
   const handleLogout = () => { logout(); navigate('/'); };
 
   const fetchAlerts = async () => {
     if (!elderId.trim()) return;
-    setError(''); setFetched(false); setLoading(true);
+    setAlertError(''); setAlertFetched(false); setAlertLoading(true);
     try {
       const res = await API.get(`/alerts/elder/${elderId}`);
       setAlerts(res.data.alerts);
-      setFetched(true);
+      setAlertFetched(true);
     } catch (err) {
-      setError(err.response?.data?.message || 'Failed to fetch alerts');
+      setAlertError(err.response?.data?.message || 'Failed to fetch alerts');
     } finally {
-      setLoading(false);
+      setAlertLoading(false);
     }
   };
 
@@ -52,12 +69,45 @@ function Dashboard() {
       await API.put(`/alerts/resolve/${alertId}`);
       setAlerts(prev => prev.map(a => a._id === alertId ? { ...a, isResolved: true } : a));
     } catch {
-      setError('Failed to resolve alert');
+      setAlertError('Failed to resolve alert');
+    }
+  };
+
+  const fetchMedications = async () => {
+    if (!medElderId.trim()) return;
+    setMedError(''); setMedFetched(false); setMedLoading(true);
+    try {
+      const res = await API.get(`/medications/elder/${medElderId}`);
+      setMedications(res.data.medications);
+      setMedFetched(true);
+    } catch (err) {
+      setMedError(err.response?.data?.message || 'Failed to fetch medications');
+    } finally {
+      setMedLoading(false);
+    }
+  };
+
+  const markTaken = async (medicationId) => {
+    setMarkingId(medicationId);
+    try {
+      await API.put(`/medications/mark-taken/${medicationId}`);
+      setMedications(prev =>
+        prev.map(m => m.medicationId === medicationId
+          ? { ...m, status: 'taken', takenAt: new Date().toISOString() }
+          : m
+        )
+      );
+    } catch {
+      setMedError('Failed to mark as taken');
+    } finally {
+      setMarkingId(null);
     }
   };
 
   const unresolved = alerts.filter(a => !a.isResolved).length;
   const resolved = alerts.filter(a => a.isResolved).length;
+  const takenCount = medications.filter(m => m.status === 'taken').length;
+  const missedCount = medications.filter(m => m.status === 'missed').length;
 
   return (
     <div style={s.page}>
@@ -73,6 +123,9 @@ function Dashboard() {
             <div style={s.avatar}>{family?.name?.[0]?.toUpperCase()}</div>
             <span style={s.userName}>{family?.name}</span>
           </div>
+          <button onClick={() => navigate('/add-medication')} style={s.medBtn}>
+            + Add medication
+          </button>
           <button onClick={() => navigate('/add-elder')} style={s.addBtn}>
             + Add elder
           </button>
@@ -95,8 +148,8 @@ function Dashboard() {
           </div>
         </div>
 
-        {/* STATS */}
-        {fetched && (
+        {/* ALERT STATS */}
+        {alertFetched && (
           <div style={s.statsRow}>
             <div style={s.statCard}>
               <p style={s.statLabel}>Total alerts</p>
@@ -113,7 +166,7 @@ function Dashboard() {
           </div>
         )}
 
-        {/* SEARCH */}
+        {/* ALERTS CARD */}
         <div style={s.searchCard}>
           <div style={s.searchTop}>
             <div>
@@ -131,16 +184,15 @@ function Dashboard() {
               style={s.input}
               autoComplete="off"
             />
-            <button onClick={fetchAlerts} style={s.fetchBtn} disabled={loading}>
-              {loading ? 'Loading...' : 'Fetch alerts'}
+            <button onClick={fetchAlerts} style={s.fetchBtn} disabled={alertLoading}>
+              {alertLoading ? 'Loading...' : 'Fetch alerts'}
             </button>
           </div>
         </div>
 
-        {error && <div style={s.errorBox}>{error}</div>}
+        {alertError && <div style={s.errorBox}>{alertError}</div>}
 
-        {/* ALERTS */}
-        {fetched && alerts.length === 0 && (
+        {alertFetched && alerts.length === 0 && (
           <div style={s.empty}>
             <p style={s.emptyIcon}>✅</p>
             <p style={s.emptyTitle}>No alerts found</p>
@@ -181,6 +233,102 @@ function Dashboard() {
           </div>
         ))}
 
+        {/* DIVIDER */}
+        <div style={s.divider} />
+
+        {/* MEDICATION STATS */}
+        {medFetched && (
+          <div style={s.statsRow}>
+            <div style={s.statCard}>
+              <p style={s.statLabel}>Total today</p>
+              <p style={s.statNum}>{medications.length}</p>
+            </div>
+            <div style={{ ...s.statCard, background: missedCount > 0 ? '#fef2f2' : undefined }}>
+              <p style={s.statLabel}>Missed</p>
+              <p style={{ ...s.statNum, color: missedCount > 0 ? '#dc2626' : '#0f172a' }}>{missedCount}</p>
+            </div>
+            <div style={s.statCard}>
+              <p style={s.statLabel}>Taken</p>
+              <p style={{ ...s.statNum, color: '#16a34a' }}>{takenCount}</p>
+            </div>
+          </div>
+        )}
+
+        {/* MEDICATIONS CARD */}
+        <div style={s.searchCard}>
+          <div style={s.searchTop}>
+            <div>
+              <p style={s.searchTitle}>Today's medications</p>
+              <p style={s.searchSub}>Enter the elder ID to view and manage today's medicine schedule</p>
+            </div>
+          </div>
+          <div style={s.searchRow}>
+            <input
+              type="text"
+              placeholder="Paste elder ID here..."
+              value={medElderId}
+              onChange={e => setMedElderId(e.target.value)}
+              onKeyDown={e => e.key === 'Enter' && fetchMedications()}
+              style={s.input}
+              autoComplete="off"
+            />
+            <button onClick={fetchMedications} style={s.fetchBtn} disabled={medLoading}>
+              {medLoading ? 'Loading...' : 'Fetch medications'}
+            </button>
+          </div>
+        </div>
+
+        {medError && <div style={s.errorBox}>{medError}</div>}
+
+        {medFetched && medications.length === 0 && (
+          <div style={s.empty}>
+            <p style={s.emptyIcon}>💊</p>
+            <p style={s.emptyTitle}>No medications scheduled</p>
+            <p style={s.emptySub}>No medications found for this elder today.</p>
+          </div>
+        )}
+
+        {medFetched && medications.map(med => {
+          const st = STATUS_STYLES[med.status] || STATUS_STYLES.pending;
+          return (
+            <div key={med.medicationId} style={s.medCard}>
+              <div style={s.medTop}>
+                <div style={s.medLeft}>
+                  <div style={s.medIcon}>💊</div>
+                  <div>
+                    <p style={s.medName}>{med.medicineName}</p>
+                    <p style={s.medDosage}>{med.dosage} · {med.scheduledTime} · {med.frequency}</p>
+                  </div>
+                </div>
+                <div style={s.medRight}>
+                  <span style={{
+                    ...s.statusPill,
+                    background: st.bg,
+                    color: st.color,
+                    border: `0.5px solid ${st.border}`
+                  }}>
+                    {st.label}
+                  </span>
+                  {med.status !== 'taken' && (
+                    <button
+                      onClick={() => markTaken(med.medicationId)}
+                      style={s.takenBtn}
+                      disabled={markingId === med.medicationId}
+                    >
+                      {markingId === med.medicationId ? 'Marking...' : 'Mark as taken'}
+                    </button>
+                  )}
+                </div>
+              </div>
+              {med.takenAt && (
+                <p style={s.takenAt}>
+                  ✅ Taken at {new Date(med.takenAt).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })}
+                </p>
+              )}
+            </div>
+          );
+        })}
+
       </div>
     </div>
   );
@@ -196,6 +344,7 @@ const s = {
   userPill: { display: 'flex', alignItems: 'center', gap: '7px', background: '#f1f5f9', padding: '5px 12px 5px 5px', borderRadius: '100px', border: '0.5px solid #e2e8f0' },
   avatar: { width: '24px', height: '24px', background: '#0f172a', color: '#fff', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '11px', fontWeight: 700 },
   userName: { fontSize: '13px', fontWeight: 500, color: '#0f172a' },
+  medBtn: { padding: '7px 14px', background: '#d97706', color: '#fff', border: 'none', borderRadius: '8px', fontSize: '13px', fontWeight: 600, cursor: 'pointer', letterSpacing: '-0.1px' },
   addBtn: { padding: '7px 14px', background: '#0f172a', color: '#fff', border: 'none', borderRadius: '8px', fontSize: '13px', fontWeight: 600, cursor: 'pointer', letterSpacing: '-0.1px' },
   logoutBtn: { padding: '7px 14px', background: 'transparent', border: '0.5px solid #e2e8f0', borderRadius: '8px', fontSize: '13px', color: '#64748b', cursor: 'pointer' },
   body: { maxWidth: '800px', margin: '0 auto', padding: '32px 24px' },
@@ -230,7 +379,18 @@ const s = {
   resolveBtn: { padding: '6px 14px', background: '#0f172a', color: '#fff', border: 'none', borderRadius: '6px', fontSize: '12px', fontWeight: 600, cursor: 'pointer' },
   alertMsg: { fontSize: '14px', color: '#0f172a', lineHeight: 1.6, margin: '0 0 6px' },
   alertHindi: { fontSize: '13px', color: '#64748b', lineHeight: 1.7, margin: '0 0 8px' },
-  alertTime: { fontSize: '11px', color: '#cbd5e1', margin: 0 }
+  alertTime: { fontSize: '11px', color: '#cbd5e1', margin: 0 },
+  divider: { height: '0.5px', background: '#e2e8f0', margin: '32px 0' },
+  medCard: { background: '#fff', border: '0.5px solid #e2e8f0', borderRadius: '12px', padding: '16px 20px', marginBottom: '10px' },
+  medTop: { display: 'flex', justifyContent: 'space-between', alignItems: 'center' },
+  medLeft: { display: 'flex', alignItems: 'center', gap: '12px' },
+  medIcon: { fontSize: '22px' },
+  medName: { fontSize: '14px', fontWeight: 600, color: '#0f172a', margin: '0 0 3px' },
+  medDosage: { fontSize: '12px', color: '#94a3b8', margin: 0 },
+  medRight: { display: 'flex', alignItems: 'center', gap: '8px' },
+  statusPill: { fontSize: '11px', fontWeight: 600, padding: '3px 10px', borderRadius: '100px' },
+  takenBtn: { padding: '6px 14px', background: '#0f172a', color: '#fff', border: 'none', borderRadius: '6px', fontSize: '12px', fontWeight: 600, cursor: 'pointer' },
+  takenAt: { fontSize: '11px', color: '#16a34a', margin: '10px 0 0', fontWeight: 500 },
 };
 
 export default Dashboard;

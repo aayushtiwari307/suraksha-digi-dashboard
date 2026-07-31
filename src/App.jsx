@@ -4,6 +4,7 @@ import Login from './pages/Login';
 import Register from './pages/Register';
 import Dashboard from './pages/Dashboard';
 import AddElder from './pages/AddElder';
+import AddMedication from './pages/AddMedication';
 
 function ProtectedRoute({ children }) {
   const { family } = useAuth();
@@ -28,6 +29,14 @@ function AppRoutes() {
         element={
           <ProtectedRoute>
             <AddElder />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/add-medication"
+        element={
+          <ProtectedRoute>
+            <AddMedication />
           </ProtectedRoute>
         }
       />
