@@ -4,21 +4,28 @@ import API from '../api/axios';
 import { useAuth } from '../context/AuthContext';
 
 function Login() {
+  const [role, setRole] = useState('family'); // 'family' or 'elder'
   const [phone, setPhone] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
-  const { login } = useAuth();
+  const { login, elderLogin } = useAuth();
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
     setLoading(true);
     try {
-      const res = await API.post('/family/login', { phone, password });
-      login(res.data.token, res.data.family);
-      navigate('/dashboard');
+      if (role === 'family') {
+        const res = await API.post('/family/login', { phone, password });
+        login(res.data.token, res.data.family);
+      } else {
+        const res = await API.post('/elders/login', { phone, password });
+        elderLogin(res.data.token, res.data.elder);
+      }
+
+      navigate('/dashboard', { replace: true });
     } catch (err) {
       setError(err.response?.data?.message || 'Login failed');
     } finally {
@@ -29,6 +36,7 @@ function Login() {
   return (
     <div style={s.page}>
       <div style={s.card}>
+
         {/* LEFT */}
         <div style={s.left}>
           <div style={s.logo}>
@@ -55,23 +63,62 @@ function Login() {
         <div style={s.right}>
           <div style={s.badge}><span style={s.dot}></span> Secure login</div>
           <h1 style={s.welcome}>Welcome back</h1>
-          <p style={s.sub}>Sign in to your family dashboard</p>
+          <p style={s.sub}>Sign in to your dashboard</p>
+
+          {/* ROLE TOGGLE */}
+          <div style={s.toggleRow}>
+            <button
+              onClick={() => { setRole('family'); setError(''); }}
+              style={{ ...s.toggleBtn, ...(role === 'family' ? s.toggleActive : {}) }}
+            >
+              👨‍👩‍👧 Family
+            </button>
+            <button
+              onClick={() => { setRole('elder'); setError(''); }}
+              style={{ ...s.toggleBtn, ...(role === 'elder' ? s.toggleActive : {}) }}
+            >
+              👴 Elder
+            </button>
+          </div>
+
           <div style={s.divider}></div>
           {error && <div style={s.error}>{error}</div>}
+
           <form onSubmit={handleSubmit} autoComplete="off">
             <div style={s.field}>
               <label style={s.label}>Phone Number</label>
-              <input style={s.input} type="text" value={phone} onChange={e => setPhone(e.target.value)} placeholder="9876543210" autoComplete="off" required />
+              <input
+                style={s.input}
+                type="text"
+                value={phone}
+                onChange={e => setPhone(e.target.value)}
+                placeholder="9876543210"
+                autoComplete="off"
+                required
+              />
             </div>
             <div style={s.field}>
               <label style={s.label}>Password</label>
-              <input style={s.input} type="password" value={password} onChange={e => setPassword(e.target.value)} placeholder="••••••••" autoComplete="off" required />
+              <input
+                style={s.input}
+                type="password"
+                value={password}
+                onChange={e => setPassword(e.target.value)}
+                placeholder="••••••••"
+                autoComplete="off"
+                required
+              />
             </div>
             <button style={s.btn} type="submit" disabled={loading}>
-              {loading ? 'Signing in...' : 'Sign in'}
+              {loading ? 'Signing in...' : `Sign in as ${role === 'family' ? 'Family' : 'Elder'}`}
             </button>
           </form>
-          <p style={s.footerLink}>New here? <Link to="/register" style={{ color: '#1e88e5', fontWeight: 500 }}>Create an account</Link></p>
+
+          {role === 'family' && (
+            <p style={s.footerLink}>
+              New here? <Link to="/register" style={{ color: '#1e88e5', fontWeight: 500 }}>Create an account</Link>
+            </p>
+          )}
         </div>
       </div>
     </div>
@@ -100,6 +147,9 @@ const s = {
   dot: { width: '6px', height: '6px', background: '#4caf50', borderRadius: '50%', display: 'inline-block' },
   welcome: { fontSize: '24px', fontWeight: 700, color: '#0a1628', letterSpacing: '-0.4px' },
   sub: { fontSize: '13px', color: '#888', marginTop: '5px' },
+  toggleRow: { display: 'flex', gap: '8px', marginTop: '16px' },
+  toggleBtn: { flex: 1, height: '38px', border: '1px solid #e0e0e0', borderRadius: '8px', fontSize: '13px', fontWeight: 500, cursor: 'pointer', background: '#fafafa', color: '#888', transition: 'all 0.15s' },
+  toggleActive: { background: '#0a1628', color: '#fff', border: '1px solid #0a1628' },
   divider: { height: '1px', background: '#f0f0f0', margin: '22px 0' },
   error: { background: '#fff0f0', color: '#e53935', padding: '10px 14px', borderRadius: '8px', fontSize: '13px', marginBottom: '14px' },
   field: { marginBottom: '14px' },

@@ -1,5 +1,5 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
-import { AuthProvider, useAuth } from './context/AuthContext';
+import { AuthProvider, useAuth, getStoredAuthState } from './context/AuthContext';
 import Login from './pages/Login';
 import Register from './pages/Register';
 import Dashboard from './pages/Dashboard';
@@ -7,8 +7,11 @@ import AddElder from './pages/AddElder';
 import AddMedication from './pages/AddMedication';
 
 function ProtectedRoute({ children }) {
-  const { family } = useAuth();
-  return family ? children : <Navigate to="/" />;
+  const { family, elder } = useAuth();
+  const storedAuth = getStoredAuthState();
+  const hasAuth = Boolean(family || elder || storedAuth.family || storedAuth.elder);
+
+  return hasAuth ? children : <Navigate to="/" replace />;
 }
 
 function AppRoutes() {

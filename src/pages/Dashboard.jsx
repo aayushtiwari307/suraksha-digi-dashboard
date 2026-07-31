@@ -30,8 +30,9 @@ const STATUS_STYLES = {
 };
 
 function Dashboard() {
-  const { family, logout } = useAuth();
+  const { family, elder, logout } = useAuth();
   const navigate = useNavigate();
+  const currentName = family?.name || elder?.name;
 
   // Alerts state
   const [elderId, setElderId] = useState('');
@@ -120,15 +121,19 @@ function Dashboard() {
         </div>
         <div style={s.navRight}>
           <div style={s.userPill}>
-            <div style={s.avatar}>{family?.name?.[0]?.toUpperCase()}</div>
-            <span style={s.userName}>{family?.name}</span>
+            <div style={s.avatar}>{currentName?.[0]?.toUpperCase()}</div>
+            <span style={s.userName}>{currentName}</span>
           </div>
-          <button onClick={() => navigate('/add-medication')} style={s.medBtn}>
-            + Add medication
-          </button>
-          <button onClick={() => navigate('/add-elder')} style={s.addBtn}>
-            + Add elder
-          </button>
+          {family && (
+            <button onClick={() => navigate('/add-medication')} style={s.medBtn}>
+              + Add medication
+            </button>
+          )}
+          {family && (
+            <button onClick={() => navigate('/add-elder')} style={s.addBtn}>
+              + Add elder
+            </button>
+          )}
           <button onClick={handleLogout} style={s.logoutBtn}>Logout</button>
         </div>
       </nav>
@@ -139,8 +144,12 @@ function Dashboard() {
         <div style={s.hero}>
           <div>
             <p style={s.dateText}>{getDate()}</p>
-            <h1 style={s.greeting}>{getGreeting()}, {family?.name?.split(' ')[0]} 👋</h1>
-            <p style={s.heroSub}>Monitor your elders' digital safety and stay informed in real time.</p>
+            <h1 style={s.greeting}>{getGreeting()}, {currentName?.split(' ')[0]} 👋</h1>
+            <p style={s.heroSub}>
+              {family
+                ? "Monitor your elders' digital safety and stay informed in real time."
+                : "View your medication schedule and stay on top of your health."}
+            </p>
           </div>
           <div style={s.activeBadge}>
             <span style={s.activeDot}></span>
@@ -166,29 +175,31 @@ function Dashboard() {
           </div>
         )}
 
-        {/* ALERTS CARD */}
-        <div style={s.searchCard}>
-          <div style={s.searchTop}>
-            <div>
-              <p style={s.searchTitle}>View elder alerts</p>
-              <p style={s.searchSub}>Enter the elder ID to fetch their safety alerts</p>
+        {/* ALERTS CARD — family only */}
+        {family && (
+          <div style={s.searchCard}>
+            <div style={s.searchTop}>
+              <div>
+                <p style={s.searchTitle}>View elder alerts</p>
+                <p style={s.searchSub}>Enter the elder ID to fetch their safety alerts</p>
+              </div>
+            </div>
+            <div style={s.searchRow}>
+              <input
+                type="text"
+                placeholder="Paste elder ID here..."
+                value={elderId}
+                onChange={e => setElderId(e.target.value)}
+                onKeyDown={e => e.key === 'Enter' && fetchAlerts()}
+                style={s.input}
+                autoComplete="off"
+              />
+              <button onClick={fetchAlerts} style={s.fetchBtn} disabled={alertLoading}>
+                {alertLoading ? 'Loading...' : 'Fetch alerts'}
+              </button>
             </div>
           </div>
-          <div style={s.searchRow}>
-            <input
-              type="text"
-              placeholder="Paste elder ID here..."
-              value={elderId}
-              onChange={e => setElderId(e.target.value)}
-              onKeyDown={e => e.key === 'Enter' && fetchAlerts()}
-              style={s.input}
-              autoComplete="off"
-            />
-            <button onClick={fetchAlerts} style={s.fetchBtn} disabled={alertLoading}>
-              {alertLoading ? 'Loading...' : 'Fetch alerts'}
-            </button>
-          </div>
-        </div>
+        )}
 
         {alertError && <div style={s.errorBox}>{alertError}</div>}
 
