@@ -92,7 +92,6 @@ function Login() {
                 type="text"
                 value={phone}
                 onChange={e => setPhone(e.target.value)}
-                placeholder="9876543210"
                 autoComplete="off"
                 required
               />
@@ -104,7 +103,6 @@ function Login() {
                 type="password"
                 value={password}
                 onChange={e => setPassword(e.target.value)}
-                placeholder="••••••••"
                 autoComplete="off"
                 required
               />
