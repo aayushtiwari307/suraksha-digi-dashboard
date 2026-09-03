@@ -1,9 +1,12 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import API from '../api/axios';
+import { useFamilyElders } from '../hooks/useFamilyElders';
+import ElderSelector from '../components/ElderSelector';
 
 function AddMedication() {
   const navigate = useNavigate();
+  const { elders, loading: eldersLoading, error: eldersError } = useFamilyElders();
   const [form, setForm] = useState({
     elderId: '',
     medicineName: '',
@@ -15,18 +18,22 @@ function AddMedication() {
   const [error, setError] = useState('');
   const [success, setSuccess] = useState(false);
 
+  // Pre-selection computed directly during render — falls back to the
+  // first/only elder until the user explicitly picks one.
+  const selectedElderId = form.elderId || elders[0]?._id || '';
+
   const handleChange = (e) => {
     setForm(prev => ({ ...prev, [e.target.name]: e.target.value }));
   };
 
   const handleSubmit = async () => {
-    if (!form.elderId || !form.medicineName || !form.dosage || !form.scheduledTime) {
+    if (!selectedElderId || !form.medicineName || !form.dosage || !form.scheduledTime) {
       setError('All fields are required.');
       return;
     }
     setError(''); setLoading(true);
     try {
-      await API.post('/medications/add', form);
+      await API.post('/medications/add', { ...form, elderId: selectedElderId });
       setSuccess(true);
       setTimeout(() => navigate('/dashboard'), 1500);
     } catch (err) {
@@ -73,16 +80,15 @@ function AddMedication() {
           )}
 
           <div style={s.field}>
-            <label style={s.label}>Elder ID</label>
-            <input
-              name="elderId"
-              value={form.elderId}
-              onChange={handleChange}
-              placeholder="Paste the elder's ID here"
-              style={s.input}
-              autoComplete="off"
+            <label style={s.label}>Elder</label>
+            <ElderSelector
+              elders={elders}
+              loading={eldersLoading}
+              error={eldersError}
+              value={selectedElderId}
+              onChange={id => setForm(prev => ({ ...prev, elderId: id }))}
+              onAddElderClick={() => navigate('/add-elder')}
             />
-            <p style={s.hint}>You can find the elder ID from your MongoDB Atlas or elder profile.</p>
           </div>
 
           <div style={s.field}>

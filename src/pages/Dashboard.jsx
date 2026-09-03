@@ -1,7 +1,9 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import API from '../api/axios';
 import { useAuth } from '../context/AuthContext';
+import { useFamilyElders } from '../hooks/useFamilyElders';
+import ElderSelector from '../components/ElderSelector';
 
 const getGreeting = () => {
   const h = new Date().getHours();
@@ -34,15 +36,26 @@ function Dashboard() {
   const navigate = useNavigate();
   const currentName = family?.name || elder?.name;
 
+  // Shared elder selection (family only) — one selected elder now drives
+  // both the alerts and medications sections instead of two separate
+  // pasted IDs. useFamilyElders re-fetches fresh on every mount (no
+  // caching/localStorage), so nothing can leak across logout/login.
+  const { elders, loading: eldersLoading, error: eldersError } = useFamilyElders();
+  const [selectedElderId, setSelectedElderId] = useState('');
+
+  // Pre-selection is computed directly during render (no effect needed) —
+  // falls back to the first/only elder until the user picks one explicitly.
+  const effectiveElderId = family
+    ? (selectedElderId || elders[0]?._id || '')
+    : elder?.id;
+
   // Alerts state
-  const [elderId, setElderId] = useState('');
   const [alerts, setAlerts] = useState([]);
   const [alertError, setAlertError] = useState('');
   const [alertFetched, setAlertFetched] = useState(false);
   const [alertLoading, setAlertLoading] = useState(false);
 
   // Medications state
-  const [medElderId, setMedElderId] = useState('');
   const [medications, setMedications] = useState([]);
   const [medError, setMedError] = useState('');
   const [medFetched, setMedFetched] = useState(false);
@@ -51,11 +64,12 @@ function Dashboard() {
 
   const handleLogout = () => { logout(); navigate('/'); };
 
-  const fetchAlerts = async () => {
-    if (!elderId.trim()) return;
+  const fetchAlerts = async (idOverride) => {
+    const id = idOverride || effectiveElderId;
+    if (!id) return;
     setAlertError(''); setAlertFetched(false); setAlertLoading(true);
     try {
-      const res = await API.get(`/alerts/elder/${elderId}`);
+      const res = await API.get(`/alerts/elder/${id}`);
       setAlerts(res.data.alerts);
       setAlertFetched(true);
     } catch (err) {
@@ -74,11 +88,12 @@ function Dashboard() {
     }
   };
 
-  const fetchMedications = async () => {
-    if (!medElderId.trim()) return;
+  const fetchMedications = async (idOverride) => {
+    const id = idOverride || effectiveElderId;
+    if (!id) return;
     setMedError(''); setMedFetched(false); setMedLoading(true);
     try {
-      const res = await API.get(`/medications/elder/${medElderId}`);
+      const res = await API.get(`/medications/elder/${id}`);
       setMedications(res.data.medications);
       setMedFetched(true);
     } catch (err) {
@@ -87,6 +102,23 @@ function Dashboard() {
       setMedLoading(false);
     }
   };
+
+  // Auto-load both sections whenever the effective elder changes — covers
+  // pre-selection on first load and switching elders in the selector.
+  // Alerts are family-only (elder role has no alerts card). This is the
+  // standard data-fetching-on-mount/dependency-change pattern; the setState
+  // calls inside fetchAlerts/fetchMedications run before their `await`,
+  // which the newer set-state-in-effect lint rule flags, but this is the
+  // correct way to show a loading state for an in-flight fetch.
+  useEffect(() => {
+    if (!effectiveElderId) return;
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- intentional: shows loading state for the fetch
+    if (family) fetchAlerts(effectiveElderId);
+    fetchMedications(effectiveElderId);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [effectiveElderId, family]);
+
+  const handleElderChange = (id) => setSelectedElderId(id);
 
   const markTaken = async (medicationId) => {
     setMarkingId(medicationId);
@@ -181,21 +213,22 @@ function Dashboard() {
             <div style={s.searchTop}>
               <div>
                 <p style={s.searchTitle}>View elder alerts</p>
-                <p style={s.searchSub}>Enter the elder ID to fetch their safety alerts</p>
+                <p style={s.searchSub}>Select an elder to see their safety alerts</p>
               </div>
             </div>
             <div style={s.searchRow}>
-              <input
-                type="text"
-                placeholder="Paste elder ID here..."
-                value={elderId}
-                onChange={e => setElderId(e.target.value)}
-                onKeyDown={e => e.key === 'Enter' && fetchAlerts()}
-                style={s.input}
-                autoComplete="off"
-              />
-              <button onClick={fetchAlerts} style={s.fetchBtn} disabled={alertLoading}>
-                {alertLoading ? 'Loading...' : 'Fetch alerts'}
+              <div style={{ flex: 1 }}>
+                <ElderSelector
+                  elders={elders}
+                  loading={eldersLoading}
+                  error={eldersError}
+                  value={effectiveElderId}
+                  onChange={handleElderChange}
+                  onAddElderClick={() => navigate('/add-elder')}
+                />
+              </div>
+              <button onClick={() => fetchAlerts()} style={s.fetchBtn} disabled={alertLoading || !effectiveElderId}>
+                {alertLoading ? 'Loading...' : 'Refresh'}
               </button>
             </div>
           </div>
@@ -270,23 +303,28 @@ function Dashboard() {
           <div style={s.searchTop}>
             <div>
               <p style={s.searchTitle}>Today's medications</p>
-              <p style={s.searchSub}>Enter the elder ID to view and manage today's medicine schedule</p>
+              <p style={s.searchSub}>
+                {family ? "Select an elder to view and manage today's medicine schedule" : "Your medicine schedule for today"}
+              </p>
             </div>
           </div>
-          <div style={s.searchRow}>
-            <input
-              type="text"
-              placeholder="Paste elder ID here..."
-              value={medElderId}
-              onChange={e => setMedElderId(e.target.value)}
-              onKeyDown={e => e.key === 'Enter' && fetchMedications()}
-              style={s.input}
-              autoComplete="off"
-            />
-            <button onClick={fetchMedications} style={s.fetchBtn} disabled={medLoading}>
-              {medLoading ? 'Loading...' : 'Fetch medications'}
-            </button>
-          </div>
+          {family && (
+            <div style={s.searchRow}>
+              <div style={{ flex: 1 }}>
+                <ElderSelector
+                  elders={elders}
+                  loading={eldersLoading}
+                  error={eldersError}
+                  value={effectiveElderId}
+                  onChange={handleElderChange}
+                  onAddElderClick={() => navigate('/add-elder')}
+                />
+              </div>
+              <button onClick={() => fetchMedications()} style={s.fetchBtn} disabled={medLoading || !effectiveElderId}>
+                {medLoading ? 'Loading...' : 'Refresh'}
+              </button>
+            </div>
+          )}
         </div>
 
         {medError && <div style={s.errorBox}>{medError}</div>}

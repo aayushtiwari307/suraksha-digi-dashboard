@@ -10,7 +10,6 @@ function AddElder() {
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
-  const [elderId, setElderId] = useState('');
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
 
@@ -19,8 +18,7 @@ function AddElder() {
     setError(''); setSuccess('');
     setLoading(true);
     try {
-      const res = await API.post('/elders/register', { name, phone, age: Number(age), language, password });
-      setElderId(res.data.elder.id);
+      await API.post('/elders/register', { name, phone, age: Number(age), language, password });
       setSuccess('Elder registered successfully!');
       setName(''); setPhone(''); setAge(''); setPassword('');
     } catch (err) {
@@ -61,11 +59,7 @@ function AddElder() {
                 <span style={s.successIcon}>✅</span>
                 <span style={s.successTitle}>{success}</span>
               </div>
-              <p style={s.successSub}>Save the Elder ID below — you'll need it on the dashboard to view alerts.</p>
-              <div style={s.idBox}>
-                <p style={s.idLabel}>Elder ID</p>
-                <p style={s.idValue}>{elderId}</p>
-              </div>
+              <p style={s.successSub}>They'll now appear in your elder selector on the dashboard.</p>
             </div>
           )}
 
@@ -166,9 +160,6 @@ const s = {
   successIcon: { fontSize: '16px' },
   successTitle: { fontSize: '14px', fontWeight: 600, color: '#15803d' },
   successSub: { fontSize: '12px', color: '#16a34a', margin: '0 0 12px' },
-  idBox: { background: '#fff', border: '0.5px solid #bbf7d0', borderRadius: '8px', padding: '12px 14px' },
-  idLabel: { fontSize: '10px', fontWeight: 700, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.5px', margin: '0 0 4px' },
-  idValue: { fontSize: '13px', fontWeight: 600, color: '#0f172a', fontFamily: 'monospace', wordBreak: 'break-all', margin: 0 },
   errorBox: { background: '#fef2f2', border: '0.5px solid #fca5a5', color: '#dc2626', padding: '12px 14px', borderRadius: '8px', fontSize: '13px', marginBottom: '16px' },
   field: { marginBottom: '16px' },
   row: { display: 'flex', gap: '16px' },
