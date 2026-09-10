@@ -8,6 +8,7 @@ function AddElder() {
   const [age, setAge] = useState('');
   const [language, setLanguage] = useState('hindi');
   const [password, setPassword] = useState('');
+  const [relation, setRelation] = useState('');
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [loading, setLoading] = useState(false);
@@ -18,9 +19,9 @@ function AddElder() {
     setError(''); setSuccess('');
     setLoading(true);
     try {
-      await API.post('/elders/register', { name, phone, age: Number(age), language, password });
+      await API.post('/elders/register', { name, phone, age: Number(age), language, password, relation: relation.trim() || undefined });
       setSuccess('Elder registered successfully!');
-      setName(''); setPhone(''); setAge(''); setPassword('');
+      setName(''); setPhone(''); setAge(''); setPassword(''); setRelation('');
     } catch (err) {
       setError(err.response?.data?.message || 'Failed to register elder');
     } finally {
@@ -116,6 +117,18 @@ function AddElder() {
                   <option value="english">English</option>
                 </select>
               </div>
+            </div>
+
+            <div style={s.field}>
+              <label style={s.label}>Relation to elder</label>
+              <input
+                style={s.input}
+                type="text"
+                value={relation}
+                onChange={e => setRelation(e.target.value)}
+                placeholder="e.g. Son, Daughter, Spouse"
+                autoComplete="off"
+              />
             </div>
 
             <div style={s.field}>

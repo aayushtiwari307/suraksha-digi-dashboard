@@ -5,6 +5,8 @@ import Register from './pages/Register';
 import Dashboard from './pages/Dashboard';
 import AddElder from './pages/AddElder';
 import AddMedication from './pages/AddMedication';
+import SimulateSms from './pages/SimulateSms';
+import ManageElders from './pages/ManageElders';
 
 function ProtectedRoute({ children }) {
   const { family, elder } = useAuth();
@@ -12,6 +14,13 @@ function ProtectedRoute({ children }) {
   const hasAuth = Boolean(family || elder || storedAuth.family || storedAuth.elder);
 
   return hasAuth ? children : <Navigate to="/" replace />;
+}
+
+
+function FamilyRoute({ children }) {
+  const { family } = useAuth();
+  const storedAuth = getStoredAuthState();
+  return family || storedAuth.family ? children : <Navigate to="/dashboard" replace />;
 }
 
 function AppRoutes() {
@@ -32,6 +41,26 @@ function AppRoutes() {
         element={
           <ProtectedRoute>
             <AddElder />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/manage-elders"
+        element={
+          <ProtectedRoute>
+            <FamilyRoute>
+              <ManageElders />
+            </FamilyRoute>
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/simulate-sms"
+        element={
+          <ProtectedRoute>
+            <FamilyRoute>
+              <SimulateSms />
+            </FamilyRoute>
           </ProtectedRoute>
         }
       />

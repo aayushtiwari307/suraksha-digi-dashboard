@@ -14,6 +14,18 @@ function AddMedication() {
     scheduledTime: '',
     frequency: 'daily'
   });
+  // Explicit 12-hour input — three controls instead of the native
+  // <input type="time">, which rendered with no AM/PM affordance under
+  // some locale/browser combinations. These stay in sync with
+  // form.scheduledTime, which keeps the existing "HH:MM" (24hr) storage
+  // format the backend already expects — no schema/API change needed.
+  const [timeHour, setTimeHour] = useState('');
+  const [timeMinute, setTimeMinute] = useState('');
+  const [timePeriod, setTimePeriod] = useState('AM');
+  // Duration: 'indefinite' (until stopped, default) | a preset day count
+  // (as a string, from the select) | 'custom' (paired with customEndDate).
+  const [duration, setDuration] = useState('indefinite');
+  const [customEndDate, setCustomEndDate] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState(false);
@@ -26,14 +38,54 @@ function AddMedication() {
     setForm(prev => ({ ...prev, [e.target.name]: e.target.value }));
   };
 
+  // Converts whatever's currently selected across the three time
+  // controls into "HH:MM" (24hr) and writes it to form.scheduledTime —
+  // called after any of hour/minute/period changes.
+  const syncScheduledTime = (hour, minute, period) => {
+    if (!hour || minute === '') return;
+    let h24 = parseInt(hour, 10) % 12;
+    if (period === 'PM') h24 += 12;
+    const hh = String(h24).padStart(2, '0');
+    const mm = String(minute).padStart(2, '0');
+    setForm(prev => ({ ...prev, scheduledTime: `${hh}:${mm}` }));
+  };
+
+  const handleHourChange = (e) => {
+    setTimeHour(e.target.value);
+    syncScheduledTime(e.target.value, timeMinute, timePeriod);
+  };
+  const handleMinuteChange = (e) => {
+    setTimeMinute(e.target.value);
+    syncScheduledTime(timeHour, e.target.value, timePeriod);
+  };
+  const handlePeriodChange = (e) => {
+    setTimePeriod(e.target.value);
+    syncScheduledTime(timeHour, timeMinute, e.target.value);
+  };
+
   const handleSubmit = async () => {
     if (!selectedElderId || !form.medicineName || !form.dosage || !form.scheduledTime) {
       setError('All fields are required.');
       return;
     }
+    if (duration === 'custom' && !customEndDate) {
+      setError('Please pick an end date, or choose a preset duration.');
+      return;
+    }
     setError(''); setLoading(true);
+
+    // Indefinite ("until stopped") sends neither field — backend leaves
+    // endDate as null. A preset sends durationDays; custom sends the
+    // explicit endDate. Never both — matches validateMedication's rule.
+    const durationPayload = {};
+    if (duration === 'custom') {
+      durationPayload.endDate = customEndDate;
+    } else if (duration !== 'indefinite') {
+      durationPayload.durationDays = parseInt(duration, 10);
+    }
+
     try {
-      await API.post('/medications/add', { ...form, elderId: selectedElderId });
+      await API.post('/medications/add', { ...form, ...durationPayload, elderId: selectedElderId });
       setSuccess(true);
       setTimeout(() => navigate('/dashboard'), 1500);
     } catch (err) {
@@ -117,13 +169,25 @@ function AddMedication() {
             </div>
             <div style={{ ...s.field, flex: 1 }}>
               <label style={s.label}>Scheduled time</label>
-              <input
-                name="scheduledTime"
-                value={form.scheduledTime}
-                onChange={handleChange}
-                type="time"
-                style={s.input}
-              />
+              <div style={s.timeRow}>
+                <select value={timeHour} onChange={handleHourChange} style={s.timeSelect}>
+                  <option value="" disabled>HH</option>
+                  {Array.from({ length: 12 }, (_, i) => i + 1).map(h => (
+                    <option key={h} value={h}>{h}</option>
+                  ))}
+                </select>
+                <span style={s.timeColon}>:</span>
+                <select value={timeMinute} onChange={handleMinuteChange} style={s.timeSelect}>
+                  <option value="" disabled>MM</option>
+                  {Array.from({ length: 60 }, (_, i) => String(i).padStart(2, '0')).map(m => (
+                    <option key={m} value={m}>{m}</option>
+                  ))}
+                </select>
+                <select value={timePeriod} onChange={handlePeriodChange} style={s.timePeriodSelect}>
+                  <option value="AM">AM</option>
+                  <option value="PM">PM</option>
+                </select>
+              </div>
             </div>
           </div>
 
@@ -137,6 +201,31 @@ function AddMedication() {
             >
               <option value="daily">Daily</option>
             </select>
+          </div>
+
+          <div style={s.field}>
+            <label style={s.label}>Duration</label>
+            <select
+              value={duration}
+              onChange={e => setDuration(e.target.value)}
+              style={s.select}
+            >
+              <option value="indefinite">Until stopped</option>
+              <option value="1">1 day</option>
+              <option value="3">3 days</option>
+              <option value="7">7 days</option>
+              <option value="14">14 days</option>
+              <option value="30">30 days</option>
+              <option value="custom">Custom end date</option>
+            </select>
+            {duration === 'custom' && (
+              <input
+                type="date"
+                value={customEndDate}
+                onChange={e => setCustomEndDate(e.target.value)}
+                style={{ ...s.input, marginTop: '10px' }}
+              />
+            )}
           </div>
 
           <button
@@ -173,6 +262,10 @@ const s = {
   label: { display: 'block', fontSize: '12px', fontWeight: 600, color: '#0f172a', textTransform: 'uppercase', letterSpacing: '0.4px', marginBottom: '7px' },
   input: { width: '100%', height: '42px', padding: '0 14px', borderRadius: '8px', border: '0.5px solid #e2e8f0', background: '#f8fafc', fontSize: '13px', color: '#0f172a', outline: 'none', boxSizing: 'border-box' },
   select: { width: '100%', height: '42px', padding: '0 14px', borderRadius: '8px', border: '0.5px solid #e2e8f0', background: '#f8fafc', fontSize: '13px', color: '#0f172a', outline: 'none', cursor: 'pointer' },
+  timeRow: { display: 'flex', alignItems: 'center', gap: '4px' },
+  timeSelect: { flex: 1, height: '42px', padding: '0 8px', borderRadius: '8px', border: '0.5px solid #e2e8f0', background: '#f8fafc', fontSize: '13px', color: '#0f172a', outline: 'none', cursor: 'pointer' },
+  timeColon: { fontSize: '14px', color: '#64748b', fontWeight: 600 },
+  timePeriodSelect: { flex: 1, height: '42px', padding: '0 8px', borderRadius: '8px', border: '0.5px solid #e2e8f0', background: '#f8fafc', fontSize: '13px', color: '#0f172a', outline: 'none', cursor: 'pointer' },
   hint: { fontSize: '11px', color: '#94a3b8', margin: '6px 0 0' },
   submitBtn: { width: '100%', height: '44px', background: '#0f172a', color: '#fff', border: 'none', borderRadius: '10px', fontSize: '14px', fontWeight: 600, cursor: 'pointer', letterSpacing: '-0.2px', marginTop: '8px' },
 };

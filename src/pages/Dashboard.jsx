@@ -4,16 +4,17 @@ import API from '../api/axios';
 import { useAuth } from '../context/AuthContext';
 import { useFamilyElders } from '../hooks/useFamilyElders';
 import ElderSelector from '../components/ElderSelector';
+import { formatTimeAMPM } from '../utils/formatTime';
 
 const getGreeting = () => {
-  const h = new Date().getHours();
+  const h = Number(new Intl.DateTimeFormat('en-IN', { hour: '2-digit', hour12: false, timeZone: 'Asia/Kolkata' }).format(new Date()));
   if (h < 12) return 'Good morning';
   if (h < 17) return 'Good afternoon';
   return 'Good evening';
 };
 
 const getDate = () => new Date().toLocaleDateString('en-IN', {
-  weekday: 'long', day: 'numeric', month: 'long', year: 'numeric'
+  weekday: 'long', day: 'numeric', month: 'long', year: 'numeric', timeZone: 'Asia/Kolkata'
 });
 
 const ALERT_LABELS = {
@@ -64,18 +65,19 @@ function Dashboard() {
 
   const handleLogout = () => { logout(); navigate('/'); };
 
-  const fetchAlerts = async (idOverride) => {
+  const fetchAlerts = async (idOverride, silent = false) => {
     const id = idOverride || effectiveElderId;
     if (!id) return;
-    setAlertError(''); setAlertFetched(false); setAlertLoading(true);
+    setAlertError('');
+    if (!silent) { setAlertFetched(false); setAlertLoading(true); }
     try {
       const res = await API.get(`/alerts/elder/${id}`);
-      setAlerts(res.data.alerts);
+      setAlerts(res.data.alerts || []);
       setAlertFetched(true);
     } catch (err) {
       setAlertError(err.response?.data?.message || 'Failed to fetch alerts');
     } finally {
-      setAlertLoading(false);
+      if (!silent) setAlertLoading(false);
     }
   };
 
@@ -88,18 +90,19 @@ function Dashboard() {
     }
   };
 
-  const fetchMedications = async (idOverride) => {
+  const fetchMedications = async (idOverride, silent = false) => {
     const id = idOverride || effectiveElderId;
     if (!id) return;
-    setMedError(''); setMedFetched(false); setMedLoading(true);
+    setMedError('');
+    if (!silent) { setMedFetched(false); setMedLoading(true); }
     try {
       const res = await API.get(`/medications/elder/${id}`);
-      setMedications(res.data.medications);
+      setMedications(res.data.medications || []);
       setMedFetched(true);
     } catch (err) {
       setMedError(err.response?.data?.message || 'Failed to fetch medications');
     } finally {
-      setMedLoading(false);
+      if (!silent) setMedLoading(false);
     }
   };
 
@@ -112,9 +115,20 @@ function Dashboard() {
   // correct way to show a loading state for an in-flight fetch.
   useEffect(() => {
     if (!effectiveElderId) return;
+    // Initial load.
     // eslint-disable-next-line react-hooks/set-state-in-effect -- intentional: shows loading state for the fetch
     if (family) fetchAlerts(effectiveElderId);
     fetchMedications(effectiveElderId);
+
+    // Keep the family dashboard reasonably fresh so a scheduler-created alert
+    // becomes visible without requiring the user to click Refresh. This is
+    // polling, not a claim of push notifications.
+    if (!family) return;
+    const interval = setInterval(() => {
+      fetchAlerts(effectiveElderId, true);
+      fetchMedications(effectiveElderId, true);
+    }, 30000);
+    return () => clearInterval(interval);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [effectiveElderId, family]);
 
@@ -159,6 +173,16 @@ function Dashboard() {
           {family && (
             <button onClick={() => navigate('/add-medication')} style={s.medBtn}>
               + Add medication
+            </button>
+          )}
+          {family && (
+            <button onClick={() => navigate('/simulate-sms')} style={s.fraudBtn}>
+              Fraud check
+            </button>
+          )}
+          {family && (
+            <button onClick={() => navigate('/manage-elders')} style={s.manageBtn}>
+              Manage elders
             </button>
           )}
           {family && (
@@ -269,10 +293,24 @@ function Dashboard() {
               }
             </div>
             <p style={s.alertMsg}>{alert.message}</p>
+            {alert.source?.type === 'transaction' && alert.source.transaction && (
+              <div style={s.sourceBox}>
+                <strong>Transaction</strong>
+                <span>₹{Number(alert.source.transaction.amount).toLocaleString('en-IN')} → {alert.source.transaction.recipient}</span>
+                <span>Risk: {alert.source.transaction.riskLevel?.toUpperCase()} · Score {alert.source.transaction.riskScore}/100</span>
+              </div>
+            )}
+            {alert.source?.type === 'medication' && alert.source.medication && (
+              <div style={s.sourceBox}>
+                <strong>Missed dose</strong>
+                <span>{alert.source.medication.medicineName} · {alert.source.medication.dosage} · {alert.source.medication.scheduledTime}</span>
+                <span>Date: {alert.source.log?.date}</span>
+              </div>
+            )}
             {alert.messageHindi && <p style={s.alertHindi}>{alert.messageHindi}</p>}
             <p style={s.alertTime}>{new Date(alert.createdAt).toLocaleString('en-IN', {
               day: 'numeric', month: 'short', year: 'numeric',
-              hour: '2-digit', minute: '2-digit'
+              hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Kolkata'
             })}</p>
           </div>
         ))}
@@ -346,7 +384,7 @@ function Dashboard() {
                   <div style={s.medIcon}>💊</div>
                   <div>
                     <p style={s.medName}>{med.medicineName}</p>
-                    <p style={s.medDosage}>{med.dosage} · {med.scheduledTime} · {med.frequency}</p>
+                    <p style={s.medDosage}>{med.dosage} · {formatTimeAMPM(med.scheduledTime)} · {med.frequency}</p>
                   </div>
                 </div>
                 <div style={s.medRight}>
@@ -393,7 +431,9 @@ const s = {
   userPill: { display: 'flex', alignItems: 'center', gap: '7px', background: '#f1f5f9', padding: '5px 12px 5px 5px', borderRadius: '100px', border: '0.5px solid #e2e8f0' },
   avatar: { width: '24px', height: '24px', background: '#0f172a', color: '#fff', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '11px', fontWeight: 700 },
   userName: { fontSize: '13px', fontWeight: 500, color: '#0f172a' },
+  fraudBtn: { padding: '7px 14px', background: '#7f1d1d', color: '#fff', border: 'none', borderRadius: '8px', fontSize: '13px', fontWeight: 600, cursor: 'pointer', letterSpacing: '-0.1px' },
   medBtn: { padding: '7px 14px', background: '#d97706', color: '#fff', border: 'none', borderRadius: '8px', fontSize: '13px', fontWeight: 600, cursor: 'pointer', letterSpacing: '-0.1px' },
+  manageBtn: { padding: '7px 14px', background: '#fff', color: '#475569', border: '0.5px solid #cbd5e1', borderRadius: '8px', fontSize: '13px', fontWeight: 600, cursor: 'pointer', letterSpacing: '-0.1px' },
   addBtn: { padding: '7px 14px', background: '#0f172a', color: '#fff', border: 'none', borderRadius: '8px', fontSize: '13px', fontWeight: 600, cursor: 'pointer', letterSpacing: '-0.1px' },
   logoutBtn: { padding: '7px 14px', background: 'transparent', border: '0.5px solid #e2e8f0', borderRadius: '8px', fontSize: '13px', color: '#64748b', cursor: 'pointer' },
   body: { maxWidth: '800px', margin: '0 auto', padding: '32px 24px' },
@@ -428,6 +468,7 @@ const s = {
   resolveBtn: { padding: '6px 14px', background: '#0f172a', color: '#fff', border: 'none', borderRadius: '6px', fontSize: '12px', fontWeight: 600, cursor: 'pointer' },
   alertMsg: { fontSize: '14px', color: '#0f172a', lineHeight: 1.6, margin: '0 0 6px' },
   alertHindi: { fontSize: '13px', color: '#64748b', lineHeight: 1.7, margin: '0 0 8px' },
+  sourceBox: { display: 'flex', flexDirection: 'column', gap: '3px', background: '#f8fafc', border: '0.5px solid #e2e8f0', borderRadius: '8px', padding: '9px 12px', margin: '8px 0' },
   alertTime: { fontSize: '11px', color: '#cbd5e1', margin: 0 },
   divider: { height: '0.5px', background: '#e2e8f0', margin: '32px 0' },
   medCard: { background: '#fff', border: '0.5px solid #e2e8f0', borderRadius: '12px', padding: '16px 20px', marginBottom: '10px' },
