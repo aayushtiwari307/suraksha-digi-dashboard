@@ -68,7 +68,9 @@ function AppRoutes() {
         path="/add-medication"
         element={
           <ProtectedRoute>
-            <AddMedication />
+            <FamilyRoute>
+              <AddMedication />
+            </FamilyRoute>
           </ProtectedRoute>
         }
       />
